@@ -4,7 +4,7 @@
       "type": "stdio",
       "command": "npx",
       "args": [
-        "mcp-voice-hooks@1.0.41",
+        "mcp-voice-hooks@1.0.42",
         "--skip-hooks"
       ]
     }
