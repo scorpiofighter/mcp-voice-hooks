@@ -1202,7 +1202,7 @@ app.post('/api/hooks/post-tool', (req: Request, res: Response) => {
 
 // API to clear all utterances
 // Delete specific utterance by ID
-app.delete('/api/utterances/:id', (req: Request, res: Response) => {
+app.delete('/api/utterances/:id', (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
   const session = getActiveSessionOrFirst();
   const deleted = session.queue.delete(id);
