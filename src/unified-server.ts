@@ -1210,8 +1210,18 @@ app.post('/api/hooks/post-tool', (req: Request, res: Response) => {
 app.post('/api/hooks/session-start', (req: Request, res: Response) => {
   logHookRequest(req, 'session-start');
   const { key } = parseHookRequest(req);
-  autoSelectIfNone(key);
-  debugLog(`[Hook] session-start: key=${key}`);
+
+  // A window we were asked to open takes the voice with it, since asking for
+  // it is what wanting to talk to it looks like.
+  if (pendingSpawnSelectAt && Date.now() - pendingSpawnSelectAt < SPAWN_SELECT_WINDOW_MS) {
+    pendingSpawnSelectAt = 0;
+    selectedSessionKey = key;
+    debugLog(`[Hook] session-start: key=${key} (selected — opened on request)`);
+  } else {
+    autoSelectIfNone(key);
+    debugLog(`[Hook] session-start: key=${key}`);
+  }
+
   res.json({});
 });
 
@@ -1821,6 +1831,14 @@ interface SpawnTarget {
 const SPAWN_CONFIG_PATH = path.join(os.homedir(), '.config', 'voice-hooks', 'spawn-dirs.json');
 const SPAWN_LAUNCHER = path.join(os.homedir(), '.claude', 'bin', 'voice-spawn');
 
+// Tapping "New session" means "I want to talk to this one". The window has no
+// session id until it opens, so the intent is parked here and claimed by the
+// first hook that arrives from it. It has to be claimed before that session
+// finishes its first turn: the stop hook only waits for speech on the selected
+// session, and a session it waves through goes idle and never asks again.
+const SPAWN_SELECT_WINDOW_MS = 90_000;
+let pendingSpawnSelectAt = 0;
+
 function loadSpawnTargets(): SpawnTarget[] {
   try {
     const parsed = JSON.parse(fs.readFileSync(SPAWN_CONFIG_PATH, 'utf8'));
@@ -1924,6 +1942,8 @@ app.post('/api/spawn-session', (req: Request, res: Response) => {
       debugLog(`[Spawn] Opened a session in ${target.path}`);
     }
   });
+
+  pendingSpawnSelectAt = Date.now();
 
   res.json({
     success: true,
