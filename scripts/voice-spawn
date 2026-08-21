@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Opens a Claude Code session. Called by the voice-hooks server when you tap
+# "New session" in the web app; it passes only a folder from your allowlist
+# and, optionally, a file holding your first message.
+#
+# The prompt arrives as a FILE, not as text on a command line, so nothing you
+# say from your phone is ever interpreted by the shell.
+#
+# Why there is always a prompt: Claude only collects voice input at the end of
+# a turn. A window that has never taken a turn never checks the queue, so a
+# brand-new session is deaf — you can speak to it and the words just pile up
+# unread. Giving it something to say immediately makes it take that first turn,
+# and from then on it listens normally.
+#
+# Permission mode: you chose to skip prompts, because a session started from
+# your phone cannot show them to you. Delete the flag below for normal
+# permissions.
+set -euo pipefail
+
+CLAUDE_FLAGS=(--dangerously-skip-permissions)
+
+WAKE_PROMPT="I'm talking to you by voice from my phone. Reply with one short sentence to confirm you can hear me, then wait for what I say next."
+
+DIR="${1:-}"
+PROMPT_FILE="${2:-}"
+
+if [ -z "$DIR" ] || [ ! -d "$DIR" ]; then
+  echo "voice-spawn: not a folder: ${DIR:-<none>}" >&2
+  exec "$SHELL" -l
+fi
+
+cd "$DIR"
+clear
+echo "Started from your phone · $(basename "$DIR")"
+echo
+
+PROMPT="$WAKE_PROMPT"
+if [ -n "$PROMPT_FILE" ] && [ -f "$PROMPT_FILE" ]; then
+  FROM_PHONE="$(cat "$PROMPT_FILE")"
+  rm -f "$PROMPT_FILE"
+  [ -n "$FROM_PHONE" ] && PROMPT="$FROM_PHONE"
+fi
+
+exec claude "${CLAUDE_FLAGS[@]}" "$PROMPT"
