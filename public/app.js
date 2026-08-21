@@ -294,6 +294,7 @@ class MessengerClient {
         this.activeSessionKey = null;       // Server's selected key
         this.selectedSessionKey = null;     // User's UI selection
         this.unreadCounts = {};
+        this.pendingCloseKey = null;        // Row armed for closing, awaiting confirmation
 
         // Alerts
         this.alerts = new Map();
@@ -865,6 +866,23 @@ class MessengerClient {
                 if (!item) return;
                 const key = item.dataset.sessionKey;
                 if (!key) return;
+
+                // Closing takes two taps: the cross arms the row, Close does it.
+                if (e.target.closest('.session-close')) {
+                    this.pendingCloseKey = key;
+                    this.renderSessionList();
+                    return;
+                }
+                if (e.target.closest('.confirm-no')) {
+                    this.pendingCloseKey = null;
+                    this.renderSessionList();
+                    return;
+                }
+                if (e.target.closest('.confirm-yes')) {
+                    this.closeSession(key);
+                    return;
+                }
+
                 this.switchActiveSession(key);
                 this.toggleSidebar(false);
             });
@@ -887,6 +905,10 @@ class MessengerClient {
 
     toggleSidebar(open) {
         if (!this.sessionSidebar) return;
+        if (!open && this.pendingCloseKey) {
+            this.pendingCloseKey = null;
+            this.renderSessionList();
+        }
         this.sessionSidebar.classList.toggle('collapsed', !open);
         document.body.classList.toggle('sidebar-open', open);
         if (this.sidebarOpenBtn) {
@@ -1020,6 +1042,9 @@ class MessengerClient {
                     ? (session.agentType || session.agentId || 'sub-agent')
                     : this.formatSessionLabel(sessionId);
                 const unread = this.unreadCounts[session.key] || 0;
+                // An armed row gives its width to the two buttons — a narrow
+                // sidebar cannot hold the badge and the check as well.
+                const arming = session.canClose && session.key === this.pendingCloseKey;
 
                 const classes = ['session-item'];
                 if (isActive) classes.push('active');
@@ -1030,14 +1055,32 @@ class MessengerClient {
                 html += ` aria-current="${isActive ? 'true' : 'false'}"`;
                 html += ` title="${this.escapeHtml(session.key)}">`;
                 html += `<span class="session-label">${this.escapeHtml(label)}</span>`;
-                if (unread > 0 && !isActive) {
+                if (arming) {
+                    // nothing else competes for the row
+                } else if (unread > 0 && !isActive) {
                     html += `<span class="session-badge">${unread}</span>`;
                 } else if (session.pendingCount > 0) {
                     html += `<span class="session-meta">${session.pendingCount} waiting</span>`;
                 }
-                if (isActive) {
+                if (isActive && !arming) {
                     html += '<svg class="session-check" viewBox="0 0 24 24" aria-hidden="true">';
                     html += '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
+                }
+                // Only rows the server can actually end offer to end one —
+                // sub-agents share their parent's process, and a session that
+                // has not reported its process yet cannot be reached.
+                if (session.canClose) {
+                    if (arming) {
+                        html += '<span class="session-confirm">';
+                        html += '<button type="button" class="confirm-no">Cancel</button>';
+                        html += '<button type="button" class="confirm-yes">Close</button>';
+                        html += '</span>';
+                    } else {
+                        html += `<button type="button" class="session-close" aria-label="Close ${this.escapeHtml(label)}">`;
+                        html += '<svg viewBox="0 0 24 24" aria-hidden="true">';
+                        html += '<path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>';
+                        html += '</button>';
+                    }
                 }
                 html += '</div>';
             }
@@ -1045,6 +1088,49 @@ class MessengerClient {
         }
 
         this.sessionList.innerHTML = html;
+    }
+
+    /**
+     * End a session on the Mac.
+     *
+     * The row only offers this once the server knows which process the session
+     * runs in, so this really does close it — it is not a way of hiding a row.
+     * A refusal is worth seeing, and the sheet is covering the alerts, so the
+     * sheet steps out of the way when one arrives.
+     */
+    async closeSession(key) {
+        this.pendingCloseKey = null;
+        let failure = null;
+
+        try {
+            const response = await fetch(`${this.baseUrl}/api/sessions/close`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key }),
+            });
+            if (response.ok) {
+                this.clearAlert('session-close');
+                if (this.selectedSessionKey === key) this.selectedSessionKey = null;
+                delete this.unreadCounts[key];
+            } else {
+                const data = await response.json().catch(() => ({}));
+                failure = data.error || 'The Mac refused to close it.';
+            }
+        } catch (error) {
+            this.debugLog('Failed to close session:', error);
+            failure = 'The Mac did not answer.';
+        }
+
+        if (failure) {
+            this.toggleSidebar(false);
+            this.setAlert('session-close', {
+                tone: 'error',
+                title: 'That session is still open',
+                detail: failure,
+            });
+        }
+
+        await this.loadSessions();
     }
 
     formatSessionLabel(sessionId) {
@@ -1665,7 +1751,7 @@ class MessengerClient {
         await this.sendMessage(text);
     }
 
-    async sendMessage(text, sessionKey) {
+    async sendMessage(text, sessionKey, fromVoice = false) {
         try {
             const response = await fetch(`${this.baseUrl}/api/potential-utterances`, {
                 method: 'POST',
@@ -1674,6 +1760,7 @@ class MessengerClient {
                     text,
                     timestamp: new Date().toISOString(),
                     session: sessionKey || this.selectedSessionKey,
+                    source: fromVoice ? 'voice' : 'typed',
                 })
             });
 
@@ -1835,7 +1922,7 @@ class MessengerClient {
                 if (event.results[i].isFinal) {
                     this.isInterimText = false;
                     const finalText = this.messageInput.value.trim();
-                    this.sendMessage(finalText);
+                    this.sendMessage(finalText, undefined, true);
                     this.messageInput.value = '';
                     this.clearInterim();
                     this.updateComposer();

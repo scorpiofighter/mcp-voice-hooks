@@ -1740,6 +1740,60 @@
             flex-shrink: 0;
         }
 
+        /* Closing a session — the cross arms the row, Close does it */
+        .session-close {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: none;
+            border-radius: 50%;
+            background: var(--fill);
+            color: var(--label-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .session-close svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        .session-close:active {
+            background: var(--red);
+            color: #FFFFFF;
+        }
+
+        .session-confirm {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .session-confirm button {
+            border: none;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            min-height: 28px;
+            cursor: pointer;
+        }
+
+        .session-confirm .confirm-no {
+            background: var(--fill);
+            color: var(--label);
+        }
+
+        .session-confirm .confirm-yes {
+            background: var(--red);
+            color: #FFFFFF;
+        }
+
         .session-empty {
             padding: 26px 16px;
             text-align: center;

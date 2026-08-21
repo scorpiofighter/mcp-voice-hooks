@@ -241,6 +241,25 @@ const IS_MCP_MANAGED = process.argv.includes('--mcp-managed');
 const NO_TRANSCRIBE = process.argv.includes('--no-transcribe') || process.env.MCP_VOICE_HOOKS_NO_TRANSCRIBE === 'true';
 const SPEECH_RECOGNIZER_AVAILABLE = !NO_TRANSCRIBE && SpeechRecognizer.binaryExists(path.join(__dirname, '..'));
 
+// How long the speaker must be quiet before spoken utterances are handed over.
+// Every transcript event pushes this back, so pausing for breath mid-sentence
+// no longer reads as "I am finished, answer me".
+const SPEECH_SETTLE_MS = process.env.MCP_VOICE_HOOKS_SETTLE_MS
+  ? parseInt(process.env.MCP_VOICE_HOOKS_SETTLE_MS)
+  : 3000;
+
+let lastSpeechActivityAt = 0;
+
+/** Record that the speaker is mid-flow. Called on every transcript event. */
+function markSpeechActivity(): void {
+  lastSpeechActivityAt = Date.now();
+}
+
+/** True once the speaker has been quiet long enough to be answered. */
+function speechHasSettled(): boolean {
+  return Date.now() - lastSpeechActivityAt >= SPEECH_SETTLE_MS;
+}
+
 // Voice preferences (controlled by browser)
 let voicePreferences = {
   voiceActive: false,
@@ -534,6 +553,9 @@ interface SessionState {
   lastToolUseTimestamp: Date | null;
   lastSpeakTimestamp: Date | null;
   lastActivity: Date;
+  // The Claude Code process this session is running in, reported by its own
+  // hooks as $PPID. It is what lets the phone close a session for real.
+  pid: number | null;
 }
 
 const sessions = new Map<string, SessionState>();
@@ -544,7 +566,7 @@ let selectedSessionKey: string | null = null;
 
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minute TTL
 
-function getOrCreateSession(key: string, sessionId?: string, agentId?: string | null, agentType?: string | null): SessionState {
+function getOrCreateSession(key: string, sessionId?: string, agentId?: string | null, agentType?: string | null, pid?: number | null): SessionState {
   let session = sessions.get(key);
   if (!session) {
     session = {
@@ -556,10 +578,13 @@ function getOrCreateSession(key: string, sessionId?: string, agentId?: string | 
       lastToolUseTimestamp: null,
       lastSpeakTimestamp: null,
       lastActivity: new Date(),
+      pid: pid || null,
     };
     sessions.set(key, session);
-    debugLog(`[Session] Created: key=${key} session=${sessionId || 'default'} agent=${agentId || 'main'} type=${agentType || 'none'}`);
+    debugLog(`[Session] Created: key=${key} session=${sessionId || 'default'} agent=${agentId || 'main'} type=${agentType || 'none'} pid=${pid || 'unknown'}`);
   }
+  // Resuming a session gives it a new process, so the latest hook wins.
+  if (pid && session.pid !== pid) session.pid = pid;
   session.lastActivity = new Date();
   return session;
 }
@@ -676,7 +701,11 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // API Routes
 app.post('/api/potential-utterances', (req: Request, res: Response) => {
-  const { text, timestamp } = req.body;
+  const { text, timestamp, source } = req.body;
+
+  // Browser-side recognition posts finals straight here; typed text does not,
+  // and stays instant.
+  if (source === 'voice') markSpeechActivity();
 
   if (!text || !text.trim()) {
     res.status(400).json({ error: 'Text is required' });
@@ -810,7 +839,7 @@ async function waitForUtteranceCore(session?: SessionState) {
       u => u.status === 'pending'
     );
 
-    if (pendingUtterances.length > 0) {
+    if (pendingUtterances.length > 0 && speechHasSettled()) {
       // Found utterances
 
       // Sort by timestamp (oldest first)
@@ -878,7 +907,7 @@ app.post('/api/wait-for-utterances', async (_req: Request, res: Response) => {
 app.get('/api/has-pending-utterances', (_req: Request, res: Response) => {
   const session = getActiveSessionOrFirst();
   const pendingCount = session.queue.utterances.filter(u => u.status === 'pending').length;
-  const hasPending = pendingCount > 0;
+  const hasPending = pendingCount > 0 && speechHasSettled();
 
   res.json({
     hasPending,
@@ -950,7 +979,7 @@ function handleHookRequest(attemptedAction: 'tool' | 'speak' | 'stop' | 'post-to
   // Always check for pending utterances regardless of voiceActive
   // This allows typed messages to be dequeued even when mic is off
   const pendingUtterances = s.queue.utterances.filter(u => u.status === 'pending');
-  if (pendingUtterances.length > 0) {
+  if (pendingUtterances.length > 0 && speechHasSettled()) {
     // Always dequeue (dequeueUtterancesCore no longer requires voiceActive)
     const dequeueResult = dequeueUtterancesCore(s);
 
@@ -1052,13 +1081,22 @@ function handleHookRequest(attemptedAction: 'tool' | 'speak' | 'stop' | 'post-to
   return { decision: 'approve' };
 }
 
+// A hook runs as a child of the Claude process it belongs to, so $PPID names
+// that process. The hooks pass it as ?pid= and it is the only way this server
+// learns which session lives where.
+function parseHookPid(req: Request): number | null {
+  const raw = req.query?.pid;
+  const pid = typeof raw === 'string' ? Number.parseInt(raw, 10) : NaN;
+  return Number.isInteger(pid) && pid > 1 ? pid : null;
+}
+
 // Parse composite key from hook request body and get/create session
 function parseHookRequest(req: Request): { key: string; sessionId: string; agentId: string | null; session: SessionState } {
   const sessionId = req.body?.session_id || 'default';
   const agentId = req.body?.agent_id || null;
   const agentType = req.body?.agent_type || null;
   const key = compositeKey(sessionId, agentId);
-  const session = getOrCreateSession(key, sessionId, agentId, agentType);
+  const session = getOrCreateSession(key, sessionId, agentId, agentType, parseHookPid(req));
   return { key, sessionId, agentId, session };
 }
 
@@ -1571,11 +1609,13 @@ function startRecognizerForClient(client: WsAudioClient): void {
     if (client.ws.readyState !== WebSocket.OPEN) return;
 
     if (result.type === 'interim') {
+      markSpeechActivity();
       client.ws.send(JSON.stringify({
         type: 'transcript-interim',
         text: result.text,
       }));
     } else if (result.type === 'final' && result.text.trim()) {
+      markSpeechActivity();
       const utteranceId = randomUUID();
       // Create utterance in the selected session (from WS client), falling back to active
       const selectedKey = (client as any).selectedSessionKey;
@@ -1784,6 +1824,7 @@ app.get('/api/sessions', (_req: Request, res: Response) => {
     agentId: s.agentId,
     agentType: s.agentType,
     isActive: s.key === selectedSessionKey,
+    canClose: !s.agentId && s.pid !== null,
     lastActivity: s.lastActivity,
     utteranceCount: s.queue.utterances.length,
     messageCount: s.queue.messages.length,
@@ -1812,6 +1853,64 @@ app.post('/api/active-session', (req: Request, res: Response) => {
   res.json({
     success: true,
     activeKey: selectedSessionKey,
+  });
+});
+
+// ── Closing a Claude Code session from the browser ─────────────────
+//
+// Same rule as starting one: the phone never names a process, only a session
+// this server already knows about, and the only pid ever signalled is one this
+// server's own hooks reported. Before signalling, the process is checked to be
+// a claude one — a pid the OS has since handed to something else is left alone.
+
+app.post('/api/sessions/close', (req: Request, res: Response) => {
+  const key = req.body?.key;
+  const session = typeof key === 'string' ? sessions.get(key) : undefined;
+
+  if (!session) {
+    res.status(400).json({ error: 'Unknown session' });
+    return;
+  }
+
+  // A sub-agent runs inside its parent's process; closing it would take the
+  // whole session down, which is not what tapping its row means.
+  if (session.agentId) {
+    res.status(400).json({ error: 'A sub-agent closes with the session it belongs to' });
+    return;
+  }
+
+  // Forget it either way: the phone asked for it gone, and if the process
+  // somehow survives, its next hook simply registers it again.
+  const forget = () => {
+    sessions.delete(session.key);
+    if (selectedSessionKey === session.key) selectedSessionKey = null;
+    debugLog(`[Session] Closed from browser: key=${session.key} pid=${session.pid || 'unknown'}`);
+  };
+
+  const pid = session.pid;
+  if (!pid) {
+    forget();
+    res.json({ success: true, ended: false, message: 'Removed from the list — this session never reported a process.' });
+    return;
+  }
+
+  execFile('ps', ['-o', 'comm=', '-p', String(pid)], (error, stdout) => {
+    const command = (stdout || '').trim();
+    const isClaude = !error && /(^|\/)claude$/.test(command);
+
+    if (isClaude) {
+      try {
+        process.kill(pid, 'SIGTERM');
+        debugLog(`[Session] Sent SIGTERM to pid=${pid}`);
+      } catch (killError) {
+        debugLog(`[Session] Could not signal pid=${pid}: ${killError}`);
+      }
+    } else {
+      debugLog(`[Session] Not signalling pid=${pid}: no longer a claude process (${command || 'gone'})`);
+    }
+
+    forget();
+    res.json({ success: true, ended: isClaude });
   });
 });
 
