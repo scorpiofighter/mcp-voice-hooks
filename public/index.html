@@ -1,237 +1,639 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Mode for Claude Code - Messenger</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#F9F9F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1E1E20" media="(prefers-color-scheme: dark)">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Voice Mode">
+    <title>Voice Mode for Claude Code</title>
     <style>
-        * {
+        /* ═══════════════════════════════════════════════════════════
+           Tokens — iOS system palette, light and dark
+           ═══════════════════════════════════════════════════════════ */
+        :root {
+            color-scheme: light dark;
+
+            --bg: #F2F2F7;
+            --bg-elevated: #FFFFFF;
+            --bg-sunken: #EBEBF0;
+            --bar: rgba(249, 249, 249, 0.82);
+            --bar-solid: #F9F9F9;
+
+            --label: #000000;
+            --label-2: #6C6C70;
+            --label-3: #9C9CA0;
+
+            --separator: rgba(60, 60, 67, 0.24);
+            --hairline: rgba(60, 60, 67, 0.29);
+            --fill: rgba(118, 118, 128, 0.12);
+            --fill-strong: rgba(118, 118, 128, 0.20);
+
+            --blue: #007AFF;
+            --blue-press: #0051D5;
+            --blue-soft: rgba(0, 122, 255, 0.12);
+            --green: #248A3D;
+            --green-vivid: #34C759;
+            --green-soft: rgba(52, 199, 89, 0.14);
+            --red: #D70015;
+            --red-soft: rgba(255, 59, 48, 0.12);
+            --orange: #C93400;
+            --orange-vivid: #FF9500;
+            --orange-soft: rgba(255, 149, 0, 0.16);
+            --gray: #8E8E93;
+
+            --bubble-in: #E9E9EB;
+            --bubble-in-label: #000000;
+            --bubble-out: #007AFF;
+            --bubble-out-label: #FFFFFF;
+
+            --shadow-sheet: 0 -8px 40px rgba(0, 0, 0, 0.18);
+            --shadow-raised: 0 2px 10px rgba(0, 0, 0, 0.10);
+
+            --radius-sheet: 14px;
+            --radius-card: 12px;
+            --radius-bubble: 20px;
+
+            --dur: 0.22s;
+            --ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --bg-elevated: #1C1C1E;
+                --bg-sunken: #0B0B0C;
+                --bar: rgba(30, 30, 32, 0.78);
+                --bar-solid: #1E1E20;
+
+                --label: #FFFFFF;
+                --label-2: #A0A0A8;
+                --label-3: #737379;
+
+                --separator: rgba(84, 84, 88, 0.50);
+                --hairline: rgba(84, 84, 88, 0.65);
+                --fill: rgba(120, 120, 128, 0.24);
+                --fill-strong: rgba(120, 120, 128, 0.36);
+
+                --blue: #0A84FF;
+                --blue-press: #409CFF;
+                --blue-soft: rgba(10, 132, 255, 0.20);
+                --green: #30D158;
+                --green-vivid: #30D158;
+                --green-soft: rgba(48, 209, 88, 0.20);
+                --red: #FF453A;
+                --red-soft: rgba(255, 69, 58, 0.20);
+                --orange: #FF9F0A;
+                --orange-vivid: #FF9F0A;
+                --orange-soft: rgba(255, 159, 10, 0.20);
+                --gray: #8E8E93;
+
+                --bubble-in: #26262A;
+                --bubble-in-label: #FFFFFF;
+                --bubble-out: #0A84FF;
+                --bubble-out-label: #FFFFFF;
+
+                --shadow-sheet: 0 -8px 40px rgba(0, 0, 0, 0.60);
+                --shadow-raised: 0 2px 10px rgba(0, 0, 0, 0.40);
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           Base
+           ═══════════════════════════════════════════════════════════ */
+        *,
+        *::before,
+        *::after {
             box-sizing: border-box;
         }
 
+        html,
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100%;
             margin: 0;
             padding: 0;
-            background-color: #f5f5f5;
-            height: 100vh;
-            overflow: hidden;
         }
 
-        .app-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif;
+            font-size: 17px;
+            line-height: 1.35;
+            color: var(--label);
+            background: var(--bg);
+            -webkit-font-smoothing: antialiased;
+            -webkit-text-size-adjust: 100%;
+            overscroll-behavior: none;
         }
 
-        .app-body {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        /* Header - Neo-Brutalist Style */
-        .app-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background: #E0E0E0;
-            color: #000;
-            border-bottom: 6px solid #666;
-            box-shadow: 8px 8px 0 #666;
-        }
-
-        .header-title-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .app-header h1 {
+        button {
+            font: inherit;
+            color: inherit;
             margin: 0;
-            font-family: 'Courier New', 'Courier', monospace;
-            font-size: 24px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: -1px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
-        /* Main Content Area */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        /* Conversation Section */
-        .conversation-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .conversation-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 20px;
-            border-bottom: 1px solid #E0E0E0;
-            background: #FAFAFA;
-        }
-
-        .conversation-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .conversation-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .icon-button {
-            background: white;
-            border: 1px solid #DDD;
+        :focus-visible {
+            outline: 3px solid var(--blue);
+            outline-offset: 2px;
             border-radius: 6px;
-            padding: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
         }
 
-        .icon-button:hover {
-            background: #F0F0F0;
-            border-color: #BBB;
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
         }
 
-        .icon-button.danger:hover {
-            background: #FFEBEE;
-            border-color: #EF5350;
-        }
-
-        .icon-button svg {
-            fill: #666;
-        }
-
-        .icon-button.danger:hover svg {
-            fill: #EF5350;
-        }
-
-        /* Conversation Container */
-        .conversation-container {
-            flex: 1;
-            overflow-y: auto;
-            background: #F5F5F5;
+        /* ═══════════════════════════════════════════════════════════
+           App shell
+           ═══════════════════════════════════════════════════════════ */
+        .app {
+            display: grid;
+            grid-template-rows: [navbar] auto [status] auto [alerts] auto [feed] minmax(0, 1fr) [dock] auto;
+            height: 100vh;
+            height: 100dvh;
+            max-width: 780px;
+            margin: 0 auto;
+            background: var(--bg);
             position: relative;
+            overflow: hidden;
         }
 
-        .conversation-messages {
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            gap: 12px;
-            min-height: 100%;
-        }
-
-        /* Empty State */
-        .empty-state {
-            display: flex;
-            flex-direction: column;
+        /* ── Navigation bar ───────────────────────────────────────── */
+        .navbar {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
             align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: #999;
-            text-align: center;
-            padding: 40px 20px;
+            gap: 8px;
+            padding: 6px calc(8px + var(--safe-right)) 6px calc(8px + var(--safe-left));
+            padding-top: calc(6px + var(--safe-top));
+            background: var(--bar);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 0.5px solid var(--hairline);
+            position: relative;
+            z-index: 20;
         }
 
-        .empty-state svg {
-            margin-bottom: 16px;
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+            .navbar {
+                background: var(--bar-solid);
+            }
         }
 
-        .empty-state p {
+        .nav-title {
             margin: 0;
-            font-size: 16px;
-        }
-
-        /* Waiting Indicator */
-        .waiting-indicator {
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.4px;
             text-align: center;
-            color: #999;
-            font-size: 14px;
-            font-style: italic;
-            padding: 12px 20px;
-            margin-top: 8px;
+            white-space: nowrap;
         }
 
-        /* Message Bubbles */
-        .message-bubble {
-            max-width: 70%;
-            padding: 10px 14px;
-            border-radius: 18px;
-            word-wrap: break-word;
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            min-height: 44px;
+            padding: 0 8px;
+            background: none;
+            border: none;
+            color: var(--blue);
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+        .nav-btn:active {
+            opacity: 0.4;
+        }
+
+        .nav-btn--leading {
+            justify-self: start;
+        }
+
+        .nav-btn--trailing {
+            justify-self: end;
+            min-width: 44px;
+            justify-content: center;
+        }
+
+        .nav-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        .nav-btn.hidden {
+            visibility: hidden;
+        }
+
+        /* ── Status strip ─────────────────────────────────────────── */
+        .statusbar {
+            padding: 8px calc(12px + var(--safe-right)) 8px calc(12px + var(--safe-left));
+            background: var(--bg-elevated);
+            border-bottom: 0.5px solid var(--hairline);
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
             position: relative;
-            animation: messageSlideIn 0.2s ease-out;
+            z-index: 15;
         }
 
-        @keyframes messageSlideIn {
+        .chips {
+            display: flex;
+            gap: 6px;
+        }
+
+        .chip {
+            flex: 1 1 0;
+            min-width: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 5px 6px;
+            border-radius: 8px;
+            background: var(--fill);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: -0.1px;
+            color: var(--label);
+        }
+
+        .chip-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gray);
+            flex-shrink: 0;
+        }
+
+        .chip-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Chip states — colour AND wording both change */
+        .chip[data-state="ok"] {
+            background: var(--green-soft);
+            color: var(--green);
+        }
+
+        .chip[data-state="ok"] .chip-dot {
+            background: var(--green-vivid);
+        }
+
+        .chip[data-state="busy"] {
+            background: var(--blue-soft);
+            color: var(--blue);
+        }
+
+        .chip[data-state="busy"] .chip-dot {
+            background: var(--blue);
+            animation: dotPulse 1.4s ease-in-out infinite;
+        }
+
+        .chip[data-state="warn"] {
+            background: var(--orange-soft);
+            color: var(--orange);
+        }
+
+        .chip[data-state="warn"] .chip-dot {
+            background: var(--orange-vivid);
+        }
+
+        .chip[data-state="bad"] {
+            background: var(--red-soft);
+            color: var(--red);
+        }
+
+        .chip[data-state="bad"] .chip-dot {
+            background: var(--red);
+        }
+
+        @keyframes dotPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.35;
+                transform: scale(0.7);
+            }
+        }
+
+        /* ── Target pill ──────────────────────────────────────────── */
+        .target-pill {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            width: 100%;
+            min-height: 36px;
+            padding: 6px 10px;
+            border: none;
+            border-radius: 9px;
+            background: var(--fill);
+            text-align: left;
+            cursor: pointer;
+            color: var(--label);
+        }
+
+        .target-pill:active {
+            background: var(--fill-strong);
+        }
+
+        .target-icon {
+            width: 15px;
+            height: 15px;
+            fill: var(--label-2);
+            flex-shrink: 0;
+        }
+
+        .target-caption {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--label-2);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+
+        .target-name {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .target-chevron {
+            width: 13px;
+            height: 13px;
+            fill: var(--label-3);
+            flex-shrink: 0;
+        }
+
+        .target-pill[data-drift="true"] {
+            background: var(--orange-soft);
+        }
+
+        .target-pill[data-drift="true"] .target-caption,
+        .target-pill[data-drift="true"] .target-icon {
+            color: var(--orange);
+            fill: var(--orange);
+        }
+
+        .target-pill[data-drift="true"] .target-name {
+            color: var(--orange);
+        }
+
+        /* ── Alerts ───────────────────────────────────────────────── */
+        .alert-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            background: var(--separator);
+            position: relative;
+            z-index: 14;
+            max-height: 24dvh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        .alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 11px calc(12px + var(--safe-right)) 11px calc(12px + var(--safe-left));
+            background: var(--bg-elevated);
+            animation: alertIn 0.26s var(--ease);
+        }
+
+        @keyframes alertIn {
             from {
                 opacity: 0;
-                transform: translateY(10px);
+                transform: translateY(-8px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
 
-        /* User Messages (Right Side, Blue) */
-        .message-bubble.user {
-            align-self: flex-end;
-            background: #007AFF;
-            color: white;
-            border-bottom-right-radius: 4px;
+        .alert-glyph {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            margin-top: 1px;
+            fill: var(--orange);
         }
 
-        /* Assistant Messages (Left Side, Gray) */
+        .alert[data-tone="error"] .alert-glyph {
+            fill: var(--red);
+        }
+
+        .alert[data-tone="info"] .alert-glyph {
+            fill: var(--blue);
+        }
+
+        .alert-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .alert-title {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            margin: 0;
+        }
+
+        .alert-detail {
+            font-size: 13px;
+            color: var(--label-2);
+            margin: 2px 0 0;
+            line-height: 1.34;
+        }
+
+        .alert-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .alert-action {
+            min-height: 34px;
+            padding: 6px 14px;
+            border: none;
+            border-radius: 17px;
+            background: var(--blue);
+            color: #FFFFFF;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .alert-action:active {
+            background: var(--blue-press);
+        }
+
+        .alert-action--quiet {
+            background: var(--fill-strong);
+            color: var(--label);
+        }
+
+        .alert-dismiss {
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 15px;
+            background: none;
+            color: var(--label-3);
+            cursor: pointer;
+        }
+
+        .alert-dismiss svg {
+            width: 17px;
+            height: 17px;
+            fill: currentColor;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           Conversation
+           ═══════════════════════════════════════════════════════════ */
+        .conversation-container {
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            background: var(--bg);
+        }
+
+        .conversation-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            padding: 14px calc(14px + var(--safe-right)) 10px calc(14px + var(--safe-left));
+            min-height: 100%;
+        }
+
+        /* ── Empty state ──────────────────────────────────────────── */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 14px;
+            padding: 40px 24px;
+            text-align: center;
+        }
+
+        .empty-glyph {
+            width: 58px;
+            height: 58px;
+            fill: var(--label-3);
+        }
+
+        .empty-state p {
+            margin: 0;
+            font-size: 15px;
+            color: var(--label-2);
+            max-width: 30ch;
+            line-height: 1.4;
+        }
+
+        /* ── Bubbles ──────────────────────────────────────────────── */
+        .message-bubble {
+            max-width: 78%;
+            padding: 8px 14px;
+            border-radius: var(--radius-bubble);
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            animation: bubbleIn 0.2s var(--ease);
+            margin-top: 5px;
+        }
+
+        @keyframes bubbleIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px) scale(0.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .message-bubble.user {
+            align-self: flex-end;
+            background: var(--bubble-out);
+            color: var(--bubble-out-label);
+            border-bottom-right-radius: 6px;
+        }
+
         .message-bubble.assistant {
             align-self: flex-start;
-            background: #E5E5EA;
-            color: #000;
-            border-bottom-left-radius: 4px;
+            background: var(--bubble-in);
+            color: var(--bubble-in-label);
+            border-bottom-left-radius: 6px;
         }
 
         .message-text {
-            font-size: 15px;
-            line-height: 1.4;
+            font-size: 16px;
+            line-height: 1.36;
             white-space: pre-wrap;
         }
 
         .message-meta {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: flex-end;
             gap: 8px;
-            margin-top: 6px;
+            margin-top: 3px;
             font-size: 11px;
-            opacity: 0.7;
+            letter-spacing: 0.1px;
         }
 
         .message-bubble.user .message-meta {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.82);
         }
 
         .message-bubble.assistant .message-meta {
-            color: rgba(0, 0, 0, 0.5);
+            color: var(--label-2);
         }
 
         .message-timestamp {
@@ -239,23 +641,51 @@
         }
 
         .message-status {
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Status wording carries the meaning; the dot only reinforces it */
+        .message-status::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            flex-shrink: 0;
+            order: -1;
+        }
+
+        .message-bubble.user .message-status.pending {
+            color: #FFE9A8;
+        }
+
+        .message-bubble.user .message-status.delivered {
+            color: #CDE9FF;
+        }
+
+        .message-bubble.user .message-status.responded {
+            color: #C9F2D2;
         }
 
         .delete-message-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            margin: -6px -4px -6px 0;
+            border-radius: 13px;
             cursor: pointer;
-            opacity: 0.5;
-            transition: opacity 0.2s;
+            opacity: 0.75;
         }
 
-        .delete-message-btn:hover {
+        .delete-message-btn:active {
             opacity: 1;
+            background: rgba(255, 255, 255, 0.18);
         }
 
         .delete-icon {
@@ -264,685 +694,1278 @@
             fill: currentColor;
         }
 
-        /* Status Colors for User Messages */
-        .message-bubble.user .message-status.pending {
-            color: #FFE082;
+        /* ── Interim transcription ────────────────────────────────── */
+        .interim-bubble {
+            align-self: flex-end;
+            max-width: 78%;
+            margin-top: 5px;
+            padding: 8px 14px;
+            border-radius: var(--radius-bubble);
+            border-bottom-right-radius: 6px;
+            border: 1.5px dashed var(--blue);
+            background: var(--blue-soft);
+            color: var(--label);
+            font-size: 16px;
+            font-style: italic;
+            line-height: 1.36;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
         }
 
-        .message-bubble.user .message-status.delivered {
-            color: #B3E5FC;
+        .interim-bubble::after {
+            content: attr(data-caption);
+            display: block;
+            margin-top: 3px;
+            font-size: 11px;
+            font-style: normal;
+            font-weight: 600;
+            letter-spacing: 0.1px;
+            color: var(--blue);
         }
 
-        .message-bubble.user .message-status.responded {
-            color: #C8E6C9;
+        /* ── Waiting indicator ────────────────────────────────────── */
+        /* JS rewrites textContent, so all decoration lives in pseudo-elements */
+        .waiting-indicator {
+            width: fit-content;
+            max-width: 90%;
+            margin: 10px auto 4px;
+            padding: 6px 14px 6px 30px;
+            border-radius: 15px;
+            background: var(--fill);
+            color: var(--label-2);
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+            position: relative;
         }
 
-        /* Scrollbar Styling */
-        .conversation-container::-webkit-scrollbar {
-            width: 8px;
+        .waiting-indicator::before {
+            content: "";
+            position: absolute;
+            left: 13px;
+            top: 50%;
+            width: 7px;
+            height: 7px;
+            margin-top: -3.5px;
+            border-radius: 50%;
+            background: var(--label-3);
+            animation: dotPulse 1.3s ease-in-out infinite;
         }
 
-        .conversation-container::-webkit-scrollbar-track {
-            background: #F5F5F5;
+        /* ═══════════════════════════════════════════════════════════
+           Dock — composer + the one primary control
+           ═══════════════════════════════════════════════════════════ */
+        .dock {
+            padding: 8px calc(12px + var(--safe-right)) calc(6px + var(--safe-bottom)) calc(12px + var(--safe-left));
+            background: var(--bar);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-top: 0.5px solid var(--hairline);
+            position: relative;
+            z-index: 18;
         }
 
-        .conversation-container::-webkit-scrollbar-thumb {
-            background: #CCC;
-            border-radius: 4px;
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+            .dock {
+                background: var(--bar-solid);
+            }
         }
 
-        .conversation-container::-webkit-scrollbar-thumb:hover {
-            background: #AAA;
-        }
-
-        /* Input Section */
-        .input-section {
-            border-top: 1px solid #E0E0E0;
-            background: white;
-            padding: 16px 20px;
-        }
-
-        /* Text Input Container */
-        .input-container {
+        .composer {
             display: flex;
             align-items: flex-end;
             gap: 8px;
-            background: #F8F9FA;
-            border: 2px solid #E0E0E0;
-            border-radius: 24px;
-            padding: 8px 8px 8px 16px;
-            transition: border-color 0.2s;
+            padding: 4px 4px 4px 14px;
+            border-radius: 20px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--separator);
         }
 
-        .input-container:focus-within {
-            border-color: #007AFF;
+        .composer:focus-within {
+            border-color: var(--blue);
         }
 
-        /* Text Input */
         .message-input {
             flex: 1;
+            min-width: 0;
             border: none;
             background: transparent;
             resize: none;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 15px;
-            line-height: 1.4;
-            padding: 6px 0;
-            max-height: 120px;
+            font-family: inherit;
+            font-size: 16px;
+            /* 16px minimum stops iOS zooming the page on focus */
+            line-height: 1.35;
+            color: var(--label);
+            padding: 7px 0;
+            max-height: 110px;
             overflow-y: auto;
             outline: none;
         }
 
         .message-input::placeholder {
-            color: #999;
+            color: var(--label-3);
         }
 
-        /* Microphone Button */
-        .mic-button {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: none;
-            background: #007AFF;
-            color: white;
+        .send-button {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
+            border: none;
+            border-radius: 16px;
+            background: var(--blue);
+            color: #FFFFFF;
             cursor: pointer;
-            transition: all 0.2s;
-            flex-shrink: 0;
+            transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
         }
 
-        .mic-button:hover {
-            background: #0051D5;
-            transform: scale(1.05);
-        }
-
-        .mic-button:active {
-            transform: scale(0.95);
-        }
-
-        .mic-button.listening {
-            background: #EF5350;
-            animation: micPulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes micPulse {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(239, 83, 80, 0.7);
-            }
-            50% {
-                box-shadow: 0 0 0 8px rgba(239, 83, 80, 0);
-            }
-        }
-
-        .mic-icon {
-            width: 20px;
-            height: 20px;
+        .send-button svg {
+            width: 19px;
+            height: 19px;
             fill: currentColor;
         }
 
-        /* Listening Indicator */
-        /* Header Settings */
-        .header-settings {
+        .send-button:disabled {
+            background: var(--fill-strong);
+            color: var(--label-3);
+            cursor: default;
+        }
+
+        .send-button:not(:disabled):active {
+            background: var(--blue-press);
+            transform: scale(0.92);
+        }
+
+        /* ── Microphone ───────────────────────────────────────────── */
+        .mic-dock {
+            --level: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding-top: 10px;
+        }
+
+        .mic-button {
             position: relative;
-        }
-
-        .toggle-header {
+            width: 76px;
+            height: 76px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 50%;
+            background: var(--fill-strong);
+            color: var(--label);
             cursor: pointer;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 20px;
-            transition: background 0.2s;
+            box-shadow: var(--shadow-raised);
+            transition: background var(--dur) var(--ease), color var(--dur) var(--ease), transform 0.12s var(--ease);
+            -webkit-user-select: none;
+            user-select: none;
         }
 
-        .toggle-header:hover {
-            background: rgba(0, 0, 0, 0.1);
+        .mic-button:active {
+            transform: scale(0.94);
         }
 
-        .settings-dropdown {
+        .mic-button svg {
+            width: 34px;
+            height: 34px;
+            fill: currentColor;
+            position: relative;
+            z-index: 2;
             display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: white;
-            border: 2px solid #666;
-            border-radius: 8px;
-            padding: 16px;
-            min-width: 260px;
-            z-index: 200;
-            box-shadow: 4px 4px 0 #666;
         }
 
-        .settings-dropdown.open {
+        /* Live input level — a ring that grows with what the mic hears */
+        .mic-level {
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            border: 3px solid var(--blue);
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1);
+            transition: transform 0.08s linear, opacity 0.16s linear;
+        }
+
+        /* Slow breathing halo — shown whenever the mic is genuinely open */
+        .mic-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        /* Indeterminate arc for starting / processing */
+        .mic-spinner {
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: currentColor;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .mic-label {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: -0.1px;
+            color: var(--label-2);
+            text-align: center;
+            min-height: 18px;
+        }
+
+        /* ── Microphone states ────────────────────────────────────── */
+        /* Every state differs by icon and wording, not colour alone */
+        .mic-dock[data-state="idle"] .icon-mic,
+        .mic-dock[data-state="starting"] .icon-mic,
+        .mic-dock[data-state="listening"] .icon-mic,
+        .mic-dock[data-state="hearing"] .icon-mic,
+        .mic-dock[data-state="processing"] .icon-mic {
             display: block;
         }
 
-        /* Voice Response Toggle */
-        .voice-response-control {
+        .mic-dock[data-state="speaking"] .icon-wave {
+            display: block;
+        }
+
+        .mic-dock[data-state="locked"] .icon-lock {
+            display: block;
+        }
+
+        .mic-dock[data-state="blocked"] .icon-mic-off {
+            display: block;
+        }
+
+        .mic-dock[data-state="suspended"] .icon-resume {
+            display: block;
+        }
+
+        .mic-dock[data-state="starting"] .mic-button,
+        .mic-dock[data-state="listening"] .mic-button,
+        .mic-dock[data-state="hearing"] .mic-button,
+        .mic-dock[data-state="processing"] .mic-button {
+            background: var(--blue);
+            color: #FFFFFF;
+        }
+
+        .mic-dock[data-state="speaking"] .mic-button {
+            background: var(--green-vivid);
+            color: #FFFFFF;
+        }
+
+        .mic-dock[data-state="locked"] .mic-button,
+        .mic-dock[data-state="suspended"] .mic-button {
+            background: var(--orange-vivid);
+            color: #FFFFFF;
+        }
+
+        .mic-dock[data-state="blocked"] .mic-button {
+            background: var(--fill);
+            color: var(--red);
+            box-shadow: none;
+        }
+
+        .mic-dock[data-state="listening"] .mic-ring,
+        .mic-dock[data-state="hearing"] .mic-ring {
+            opacity: 1;
+            box-shadow: 0 0 0 0 var(--blue-soft);
+            animation: micBreathe 2s ease-out infinite;
+        }
+
+        .mic-dock[data-state="speaking"] .mic-ring {
+            opacity: 1;
+            box-shadow: 0 0 0 0 var(--green-soft);
+            animation: micBreathe 1.4s ease-out infinite;
+        }
+
+        @keyframes micBreathe {
+            0% {
+                box-shadow: 0 0 0 0 currentColor;
+                opacity: 0.45;
+            }
+
+            100% {
+                box-shadow: 0 0 0 22px transparent;
+                opacity: 0;
+            }
+        }
+
+        .mic-dock[data-state="listening"] .mic-level,
+        .mic-dock[data-state="hearing"] .mic-level {
+            opacity: calc(0.25 + var(--level) * 0.75);
+            transform: scale(calc(1 + var(--level) * 0.22));
+        }
+
+        .mic-dock[data-state="starting"] .mic-spinner,
+        .mic-dock[data-state="processing"] .mic-spinner {
+            opacity: 1;
+            animation: micSpin 0.9s linear infinite;
+        }
+
+        @keyframes micSpin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .mic-dock[data-state="listening"] .mic-label,
+        .mic-dock[data-state="hearing"] .mic-label {
+            color: var(--blue);
+        }
+
+        .mic-dock[data-state="speaking"] .mic-label {
+            color: var(--green);
+        }
+
+        .mic-dock[data-state="locked"] .mic-label,
+        .mic-dock[data-state="suspended"] .mic-label {
+            color: var(--orange);
+        }
+
+        .mic-dock[data-state="blocked"] .mic-label {
+            color: var(--red);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           Question card — tappable answers, pinned in the thumb zone
+           ═══════════════════════════════════════════════════════════ */
+        .question-card {
+            margin-bottom: 8px;
+            padding: 12px;
+            border-radius: var(--radius-card);
+            background: var(--bg-elevated);
+            border: 1px solid var(--blue);
+            box-shadow: var(--shadow-raised);
+            max-height: 34dvh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            animation: alertIn 0.26s var(--ease);
+        }
+
+        .question-card[hidden] {
+            display: none;
+        }
+
+        .question-kicker {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            background: #F8F9FA;
+            gap: 6px;
+            margin: 0 0 8px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--blue);
+        }
+
+        .question-kicker svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        .question-block+.question-block {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 0.5px solid var(--separator);
+        }
+
+        .question-text {
+            margin: 0 0 10px;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            line-height: 1.32;
+        }
+
+        .question-options {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .question-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            width: 100%;
+            min-height: 48px;
+            padding: 10px 12px;
+            border: 1.5px solid var(--separator);
+            border-radius: 10px;
+            background: var(--bg);
+            color: var(--label);
+            text-align: left;
+            cursor: pointer;
+            transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+        }
+
+        .question-option:active {
+            background: var(--fill);
+        }
+
+        .question-option[aria-pressed="true"] {
+            border-color: var(--blue);
+            background: var(--blue-soft);
+        }
+
+        .question-marker {
+            width: 21px;
+            height: 21px;
+            flex-shrink: 0;
+            margin-top: 1px;
+            border: 2px solid var(--label-3);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .question-option[data-multi="true"] .question-marker {
+            border-radius: 6px;
+        }
+
+        .question-option[aria-pressed="true"] .question-marker {
+            border-color: var(--blue);
+            background: var(--blue);
+        }
+
+        .question-option[aria-pressed="true"] .question-marker::after {
+            content: "";
+            position: absolute;
+            left: 5px;
+            top: 1px;
+            width: 6px;
+            height: 11px;
+            border: solid #FFFFFF;
+            border-width: 0 2.5px 2.5px 0;
+            transform: rotate(45deg);
+        }
+
+        .question-option-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .question-option-label {
+            display: block;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            line-height: 1.3;
+        }
+
+        .question-option-desc {
+            display: block;
+            margin-top: 3px;
+            font-size: 13px;
+            color: var(--label-2);
+            line-height: 1.34;
+        }
+
+        .question-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .question-send {
+            flex: 1;
+            min-height: 46px;
+            border: none;
+            border-radius: 23px;
+            background: var(--blue);
+            color: #FFFFFF;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .question-send:disabled {
+            background: var(--fill-strong);
+            color: var(--label-3);
+            cursor: default;
+        }
+
+        .question-send:not(:disabled):active {
+            background: var(--blue-press);
+        }
+
+        .question-other {
+            min-height: 46px;
+            padding: 0 16px;
+            border: none;
+            border-radius: 23px;
+            background: var(--fill-strong);
+            color: var(--label);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .question-elsewhere {
+            margin: 8px 0 0;
+            font-size: 13px;
+            color: var(--orange);
+            line-height: 1.34;
+        }
+
+        /* Each shell element owns a named row. Without this, hiding any one of
+           them shifts the rest up and the dock inherits the 1fr row — which
+           silently collapses the microphone to zero height. */
+        .navbar {
+            grid-row: navbar;
+        }
+
+        .statusbar {
+            grid-row: status;
+        }
+
+        .alert-stack {
+            grid-row: alerts;
+        }
+
+        .conversation-container {
+            grid-row: feed;
+        }
+
+        .dock {
+            grid-row: dock;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           Sheets — sessions and settings
+           ═══════════════════════════════════════════════════════════ */
+        .scrim {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.42);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+            z-index: 90;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .scrim.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .sheet {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            max-height: 86dvh;
+            background: var(--bg);
+            border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+            box-shadow: var(--shadow-sheet);
+            transform: translateY(100%);
+            visibility: hidden;
+            transition: transform 0.32s var(--ease), visibility 0.32s;
+            padding-bottom: var(--safe-bottom);
+        }
+
+        /* JS drives visibility with .collapsed (sessions) and .open (settings) */
+        .session-sidebar:not(.collapsed),
+        .settings-sheet.open {
+            transform: translateY(0);
+            visibility: visible;
+        }
+
+        .sheet-grabber {
+            width: 36px;
+            height: 5px;
+            margin: 6px auto 0;
+            border-radius: 3px;
+            background: var(--label-3);
+            opacity: 0.45;
+            flex-shrink: 0;
+        }
+
+        .sheet-header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: 10px 12px;
+            flex-shrink: 0;
+        }
+
+        .sheet-header h2 {
+            grid-column: 2;
+            margin: 0;
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.4px;
+        }
+
+        .sheet-done {
+            grid-column: 3;
+            justify-self: end;
+            min-height: 44px;
+            padding: 0 8px;
+            border: none;
+            background: none;
+            color: var(--blue);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .sheet-done:active {
+            opacity: 0.4;
+        }
+
+        .sheet-scroll {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            padding: 0 12px 16px;
+        }
+
+        .sheet-note {
+            margin: 0 12px 10px;
+            font-size: 13px;
+            color: var(--label-2);
+            line-height: 1.36;
+        }
+
+        /* ── Grouped list rows (iOS inset style) ──────────────────── */
+        .group {
+            background: var(--bg-elevated);
+            border-radius: var(--radius-card);
+            overflow: hidden;
+            margin-bottom: 18px;
+        }
+
+        .group-title {
+            margin: 0 0 6px 16px;
+            font-size: 13px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--label-2);
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 46px;
+            padding: 9px 14px;
+            border-top: 0.5px solid var(--separator);
+        }
+
+        .row:first-child {
+            border-top: none;
+        }
+
+        .row-label {
+            flex: 1;
+            min-width: 0;
+            font-size: 16px;
+            letter-spacing: -0.2px;
+        }
+
+        .row-sub {
+            display: block;
+            margin-top: 2px;
+            font-size: 12px;
+            color: var(--label-2);
+            line-height: 1.32;
+        }
+
+        .row-stack {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }
+
+        .row select,
+        .row input[type="number"] {
+            min-height: 34px;
+            padding: 6px 10px;
+            border: 1px solid var(--separator);
             border-radius: 8px;
-            margin-bottom: 12px;
+            background: var(--bg);
+            color: var(--label);
+            font-family: inherit;
+            font-size: 16px;
         }
 
-        .voice-response-label {
-            font-size: 15px;
-            color: #333;
+        .row select {
+            max-width: 62%;
+        }
+
+        .rate-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .rate-row input[type="range"] {
+            flex: 1;
+            min-width: 0;
+            height: 34px;
+            accent-color: var(--blue);
+        }
+
+        .rate-row input[type="number"] {
+            width: 76px;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        .action-row {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 14px;
+            border: none;
+            border-top: 0.5px solid var(--separator);
+            background: var(--bg-elevated);
+            color: var(--blue);
+            font-size: 16px;
             font-weight: 500;
+            text-align: center;
+            cursor: pointer;
         }
 
+        .action-row:first-child {
+            border-top: none;
+        }
+
+        .action-row:active {
+            background: var(--fill);
+        }
+
+        /* ── Switch ───────────────────────────────────────────────── */
         .toggle-switch {
             position: relative;
             width: 51px;
             height: 31px;
+            flex-shrink: 0;
         }
 
         .toggle-switch input {
+            position: absolute;
             opacity: 0;
-            width: 0;
-            height: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            cursor: pointer;
+            z-index: 2;
         }
 
         .toggle-slider {
             position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
+            inset: 0;
+            background: var(--fill-strong);
             border-radius: 31px;
+            transition: background var(--dur) var(--ease);
+            pointer-events: none;
         }
 
-        .toggle-slider:before {
-            position: absolute;
+        .toggle-slider::before {
             content: "";
-            height: 23px;
-            width: 23px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
+            position: absolute;
+            height: 27px;
+            width: 27px;
+            left: 2px;
+            top: 2px;
+            background: #FFFFFF;
             border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.22);
+            transition: transform var(--dur) var(--ease);
         }
 
-        .toggle-switch input:checked + .toggle-slider {
-            background-color: #007AFF;
+        .toggle-switch input:checked+.toggle-slider {
+            background: var(--green-vivid);
         }
 
-        .toggle-switch input:checked + .toggle-slider:before {
+        .toggle-switch input:checked+.toggle-slider::before {
             transform: translateX(20px);
         }
 
-        /* TTS Controls */
-        .tts-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        .toggle-switch input:focus-visible+.toggle-slider {
+            outline: 3px solid var(--blue);
+            outline-offset: 2px;
         }
 
-        .tts-control {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .tts-control label {
-            font-size: 13px;
-            color: #666;
-            font-weight: 500;
-        }
-
-        .tts-control select,
-        .tts-control input[type="range"],
-        .tts-control input[type="number"] {
-            padding: 6px 8px;
-            border: 1px solid #DDD;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .tts-control input[type="number"] {
-            width: 80px;
-            margin-top: 4px;
-        }
-
-        .system-voice-info,
-        .rate-warning {
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .system-voice-info {
-            background: #E3F2FD;
-            border: 1px solid #2196F3;
-            color: #1565C0;
-        }
-
-        .rate-warning {
-            background: #FFF3E0;
-            border: 1px solid #FF9800;
-            color: #E65100;
-        }
-
-        .info-text a,
-        .warning-text {
-            color: inherit;
-        }
-
-        .tts-test-btn {
-            padding: 10px 16px;
-            background: #007AFF;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .tts-test-btn:hover {
-            background: #0051D5;
-        }
-
-        /* Session Sidebar */
-        .session-sidebar {
-            width: 240px;
-            background: #FAFAFA;
-            border-right: 1px solid #E0E0E0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            transition: width 0.2s, min-width 0.2s;
-        }
-
-        .session-sidebar.collapsed {
-            width: 0;
-            min-width: 0;
-            border-right: none;
-        }
-
-        .sidebar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            border-bottom: 1px solid #E0E0E0;
-            background: #F5F5F5;
-        }
-
-        .sidebar-header h3 {
-            margin: 0;
-            font-size: 13px;
-            font-weight: 600;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .sidebar-toggle-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 4px;
-            color: #666;
-            font-size: 14px;
-        }
-
-        .sidebar-toggle-btn:hover {
-            color: #333;
-        }
-
-        .background-enforcement-control {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 16px;
-            border-bottom: 1px solid #E0E0E0;
-            background: #F8F9FA;
-            gap: 8px;
-        }
-
-        .background-enforcement-label {
-            font-size: 12px;
-            color: #555;
-            font-weight: 500;
-            line-height: 1.3;
-        }
-
+        /* ── Session list ─────────────────────────────────────────── */
         .session-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 8px;
+            padding: 0;
         }
 
         .session-group {
-            margin-bottom: 8px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-card);
+            overflow: hidden;
+            margin-bottom: 12px;
         }
 
         .session-item {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 8px 12px;
-            border-radius: 6px;
+            gap: 10px;
+            min-height: 48px;
+            padding: 10px 14px;
+            border-top: 0.5px solid var(--separator);
             cursor: pointer;
-            transition: background 0.15s;
-            font-size: 13px;
-            color: #333;
+            color: var(--label);
         }
 
-        .session-item:hover {
-            background: #EBEBEB;
+        .session-item:first-child {
+            border-top: none;
         }
 
-        .session-item.active {
-            background: #007AFF;
-            color: white;
+        .session-item:active {
+            background: var(--fill);
+        }
+
+        .session-item::before {
+            content: "";
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--label-3);
+            flex-shrink: 0;
+        }
+
+        .session-item.active::before {
+            background: var(--blue);
+            box-shadow: 0 0 0 3px var(--blue-soft);
+        }
+
+        .session-item.active .session-label {
+            color: var(--blue);
+            font-weight: 600;
         }
 
         .session-item.sub-agent {
-            padding-left: 28px;
-            font-size: 12px;
-            color: #666;
+            padding-left: 34px;
         }
 
-        .session-item.sub-agent.active {
-            color: white;
+        .session-item.sub-agent .session-label {
+            font-size: 15px;
+            color: var(--label-2);
+        }
+
+        .session-item.sub-agent.active .session-label {
+            color: var(--blue);
         }
 
         .session-label {
             flex: 1;
+            min-width: 0;
             overflow: hidden;
             text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 16px;
+            letter-spacing: -0.2px;
+        }
+
+        .session-meta {
+            font-size: 12px;
+            color: var(--label-3);
+            flex-shrink: 0;
             white-space: nowrap;
         }
 
         .session-badge {
-            background: #EF5350;
-            color: white;
-            font-size: 10px;
+            background: var(--red);
+            color: #FFFFFF;
+            font-size: 12px;
             font-weight: 700;
-            padding: 1px 6px;
-            border-radius: 10px;
-            min-width: 18px;
+            padding: 2px 7px;
+            border-radius: 11px;
+            min-width: 22px;
             text-align: center;
             flex-shrink: 0;
-            margin-left: 8px;
         }
 
-        .session-item.active .session-badge {
-            background: rgba(255, 255, 255, 0.3);
+        .session-check {
+            width: 18px;
+            height: 18px;
+            fill: var(--blue);
+            flex-shrink: 0;
         }
 
-        /* Sidebar toggle button (in header, when sidebar is collapsed) */
-        .sidebar-open-btn {
-            background: white;
-            border: 1px solid #999;
-            border-radius: 4px;
-            cursor: pointer;
-            padding: 4px 8px;
-            color: #666;
-            font-family: 'Courier New', 'Courier', monospace;
-            font-size: 11px;
-            display: inline-block;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        .session-empty {
+            padding: 26px 16px;
+            text-align: center;
+            color: var(--label-2);
+            font-size: 15px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-card);
         }
 
-        .sidebar-open-btn:hover {
-            background: #F0F0F0;
-            color: #333;
-        }
-
-        .sidebar-open-btn.hidden {
-            display: none;
-        }
-
-        /* Mobile Responsive Styles */
-        @media (max-width: 768px) {
-            .app-container {
-                max-width: 100%;
+        /* ═══════════════════════════════════════════════════════════
+           Desktop — sidebar becomes persistent, dock stays centred
+           ═══════════════════════════════════════════════════════════ */
+        @media (min-width: 860px) {
+            .app {
+                max-width: none;
+                margin-left: 0;
+                transition: margin-left 0.32s var(--ease);
             }
 
-            .app-header {
-                padding: 12px 16px;
+            body.sidebar-open .app {
+                margin-left: 300px;
             }
 
-            .app-header h1 {
-                font-size: 18px;
+            .scrim {
+                display: none;
             }
 
-            .app-header .subtitle {
-                font-size: 12px;
-            }
-
-            .conversation-header {
-                padding: 10px 16px;
-            }
-
-            .conversation-title {
-                font-size: 14px;
-            }
-
-            .conversation-messages {
-                padding: 12px;
-                gap: 8px;
-            }
-
-            .message-bubble {
-                max-width: 85%;
-                font-size: 14px;
-                padding: 8px 12px;
-            }
-
-            .message-text {
-                font-size: 14px;
-            }
-
-            .message-meta {
-                font-size: 10px;
-            }
-
-            .input-section {
-                padding: 12px 16px;
-            }
-
-            .recognition-mode-controls {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-
-            .input-container {
-                padding: 6px 6px 6px 12px;
-            }
-
-            .message-input {
-                font-size: 16px; /* Prevents zoom on iOS */
-            }
-
-            .mic-button {
-                width: 36px;
-                height: 36px;
-            }
-
-            .mic-icon {
-                width: 18px;
-                height: 18px;
-            }
-
-            .icon-button {
-                padding: 6px;
-            }
-
-            .icon-button svg {
-                width: 18px;
-                height: 18px;
-            }
-        }
-
-        @media (max-width: 768px) {
             .session-sidebar {
-                width: 0;
-                min-width: 0;
-                border-right: none;
-            }
-            .session-sidebar:not(.collapsed) {
-                position: absolute;
-                left: 0;
+                position: fixed;
                 top: 0;
                 bottom: 0;
-                width: 240px;
-                z-index: 100;
-                border-right: 1px solid #E0E0E0;
-                box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+                left: 0;
+                right: auto;
+                width: 300px;
+                max-height: none;
+                border-radius: 0;
+                border-right: 0.5px solid var(--hairline);
+                box-shadow: none;
+                background: var(--bg-sunken);
+                transform: none;
+                visibility: visible;
+                padding: var(--safe-top) 0 var(--safe-bottom) var(--safe-left);
+            }
+
+            .session-sidebar.collapsed {
+                transform: translateX(-100%);
+                visibility: hidden;
+            }
+
+            .session-sidebar .sheet-grabber,
+            .session-sidebar .sheet-done {
+                display: none;
+            }
+
+            .session-sidebar .sheet-header {
+                grid-template-columns: 1fr;
+                padding: 16px 16px 8px;
+            }
+
+            .session-sidebar .sheet-header h2 {
+                grid-column: 1;
+                justify-self: start;
+                font-size: 20px;
+            }
+
+            .settings-sheet {
+                left: auto;
+                right: 16px;
+                bottom: auto;
+                top: calc(52px + var(--safe-top));
+                width: 380px;
+                max-height: 78vh;
+                border-radius: var(--radius-sheet);
+                transform: translateY(-8px) scale(0.98);
+                opacity: 0;
+            }
+
+            .settings-sheet.open {
+                transform: none;
+                opacity: 1;
+            }
+
+            .settings-sheet .sheet-grabber {
+                display: none;
             }
         }
 
-        /* Very small mobile screens */
-        @media (max-width: 480px) {
-            body {
-                padding: 0;
+        /* Short screens — never let the microphone leave the thumb zone */
+        @media (max-height: 700px) {
+            .mic-button {
+                width: 64px;
+                height: 64px;
             }
 
-            .app-header {
-                padding: 10px 12px;
+            .mic-button svg {
+                width: 29px;
+                height: 29px;
             }
 
-            .conversation-messages {
-                padding: 8px;
+            .mic-dock {
+                padding-top: 6px;
             }
 
-            .message-bubble {
-                max-width: 90%;
-                padding: 6px 10px;
+            .question-card {
+                max-height: 30dvh;
             }
 
-            .input-section {
-                padding: 10px 12px;
+            .alert-stack {
+                max-height: 20dvh;
+            }
+        }
+
+        /* Landscape phone — reclaim vertical space */
+        @media (max-height: 460px) and (orientation: landscape) {
+            .mic-button {
+                width: 58px;
+                height: 58px;
             }
 
-            .recognition-mode-controls {
-                font-size: 13px;
+            .mic-button svg {
+                width: 26px;
+                height: 26px;
+            }
+
+            .mic-dock {
+                padding-top: 6px;
+            }
+
+            .mic-label {
+                font-size: 12px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+        }
+
+        @media (prefers-contrast: more) {
+            :root {
+                --label-2: #3A3A3C;
+                --label-3: #5A5A5E;
+                --separator: rgba(60, 60, 67, 0.6);
             }
         }
     </style>
 </head>
+
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <div class="app-header">
-            <div class="header-title-row">
-                <button id="sidebarOpenBtn" class="sidebar-open-btn" type="button" title="Show sessions">Sessions</button>
-                <h1>Voice Mode for Claude Code</h1>
+    <div class="app">
+
+        <!-- ══════════════ Navigation ══════════════ -->
+        <header class="navbar">
+            <button id="sidebarOpenBtn" class="nav-btn nav-btn--leading" type="button" aria-label="Show sessions"
+                aria-haspopup="dialog">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4-4.6-4.6z" />
+                </svg>
+                <span>Sessions</span>
+            </button>
+
+            <h1 class="nav-title">Voice Mode</h1>
+
+            <button id="settingsToggleHeader" class="nav-btn nav-btn--trailing" type="button" aria-label="Settings"
+                aria-haspopup="dialog" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                        d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.24-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.5.39 1.05.7 1.63.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.58-.24 1.13-.55 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5" />
+                </svg>
+            </button>
+        </header>
+
+        <!-- ══════════════ Status strip — always visible ══════════════ -->
+        <div class="statusbar">
+            <div class="chips" id="statusChips" role="status" aria-live="polite" aria-atomic="true">
+                <span class="chip" id="statusLink" data-state="busy">
+                    <span class="chip-dot" aria-hidden="true"></span>
+                    <span class="chip-text">Connecting</span>
+                </span>
+                <span class="chip" id="statusMic" data-state="off">
+                    <span class="chip-dot" aria-hidden="true"></span>
+                    <span class="chip-text">Mic off</span>
+                </span>
+                <span class="chip" id="statusSound" data-state="warn">
+                    <span class="chip-dot" aria-hidden="true"></span>
+                    <span class="chip-text">Sound locked</span>
+                </span>
             </div>
-            <div class="header-settings">
-                <div class="toggle-header" id="settingsToggleHeader">
-                    <span class="toggle-arrow">&#9881;</span>
+
+            <button class="target-pill" id="targetPill" type="button" aria-haspopup="dialog">
+                <svg class="target-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                        d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2m0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8m0-13a5 5 0 1 0 5 5 5 5 0 0 0-5-5m0 8a3 3 0 1 1 3-3 3 3 0 0 1-3 3" />
+                </svg>
+                <span class="target-caption">Talking to</span>
+                <span class="target-name" id="targetName">No session yet</span>
+                <svg class="target-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8.6 16.6 13.2 12 8.6 7.4 10 6l6 6-6 6z" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- ══════════════ Alerts — each one names its fix ══════════════ -->
+        <div class="alert-stack" id="alertStack" role="region" aria-label="Problems and fixes"></div>
+
+        <!-- ══════════════ Conversation ══════════════ -->
+        <div id="conversationContainer" class="conversation-container" role="log" aria-label="Conversation"
+            aria-live="polite" aria-relevant="additions">
+            <div id="conversationMessages" class="conversation-messages">
+                <div class="empty-state">
+                    <svg class="empty-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3m5.3-3a5.3 5.3 0 0 1-10.6 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z" />
+                    </svg>
+                    <p id="emptyStateMessage">Nothing yet. Tap the microphone and start talking, or type a message.</p>
                 </div>
-                <div class="settings-dropdown" id="settingsContent">
-                    <div class="tts-controls" id="voiceOptions">
-                        <div class="tts-control">
-                            <label for="recognitionModeSelect">Recognition:</label>
-                            <select id="recognitionModeSelect">
-                                <option value="server">Server Recognition</option>
-                                <option value="browser">Browser Recognition</option>
-                            </select>
-                        </div>
-                        <div class="tts-control">
-                            <label for="speechRate">Speaking Rate:</label>
-                            <input type="range" id="speechRate" min="0.5" max="5" step="0.1" value="1">
-                            <input type="number" id="speechRateInput" min="0.5" max="5" step="0.1" value="1">
-                        </div>
-                        <div class="tts-control">
-                            <label for="feedbackSoundMode">Feedback Sounds:</label>
-                            <select id="feedbackSoundMode">
-                                <option value="continuous">Continuous</option>
-                                <option value="once">Once</option>
-                                <option value="off">Off</option>
-                            </select>
-                        </div>
-                        <button class="tts-test-btn" id="testTTSBtn">Test Voice</button>
-                    </div>
-                </div>
+                <div id="waitingIndicator" class="waiting-indicator" style="display: none;">Claude is waiting...</div>
             </div>
         </div>
 
-        <!-- Body with sidebar and main content -->
-        <div class="app-body">
-        <!-- Session Sidebar -->
-        <div id="sessionSidebar" class="session-sidebar collapsed">
-            <div class="sidebar-header">
-                <h3>Sessions</h3>
-                <button id="sidebarCloseBtn" class="sidebar-toggle-btn" title="Hide sessions">&#x2715;</button>
+        <!-- ══════════════ Dock ══════════════ -->
+        <div class="dock">
+            <div class="question-card" id="questionCard" hidden></div>
+
+            <div class="composer">
+                <label class="visually-hidden" for="messageInput">Message</label>
+                <textarea id="messageInput" class="message-input" placeholder="Message" rows="1"
+                    autocomplete="off" autocapitalize="sentences"></textarea>
+                <button id="sendBtn" class="send-button" type="button" aria-label="Send message" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 4 5 11l1.4 1.4L11 7.8V20h2V7.8l4.6 4.6L19 11z" />
+                    </svg>
+                </button>
             </div>
-            <div class="background-enforcement-control" id="backgroundEnforcementControl">
-                <span class="background-enforcement-label">Force background agents to send messages</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="backgroundEnforcementToggle">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div id="sessionList" class="session-list">
-                <div style="padding: 16px; color: #999; font-size: 13px; text-align: center;">
-                    No sessions connected
-                </div>
+
+            <div class="mic-dock" id="micDock" data-state="idle">
+                <button id="micBtn" class="mic-button" type="button" aria-pressed="false"
+                    aria-describedby="micLabel">
+                    <span class="mic-ring" aria-hidden="true"></span>
+                    <span class="mic-level" aria-hidden="true"></span>
+                    <span class="mic-spinner" aria-hidden="true"></span>
+                    <svg class="icon-mic" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3m5.3-3a5.3 5.3 0 0 1-10.6 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z" />
+                    </svg>
+                    <svg class="icon-mic-off" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M15 11V5a3 3 0 0 0-5.94-.6zM19 11h-1.7a5.3 5.3 0 0 1-.72 2.65l1.25 1.25A7 7 0 0 0 19 11M4.4 3 3 4.4l6 6V11a3 3 0 0 0 4.15 2.77l1.2 1.2A5.3 5.3 0 0 1 6.7 11H5a7 7 0 0 0 6 6.92V21h2v-3.08a6.9 6.9 0 0 0 2.55-.87l3.05 3.05L20 18.7z" />
+                    </svg>
+                    <svg class="icon-lock" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M17 9V7a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2zM9 7a3 3 0 0 1 6 0v2H9zm3 12a2 2 0 1 1 2-2 2 2 0 0 1-2 2" />
+                    </svg>
+                    <svg class="icon-wave" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M11 4.5v15a.5.5 0 0 1-.85.35L6.3 16H3.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h2.8l3.85-3.85A.5.5 0 0 1 11 4.5m4.6 2.6a1 1 0 0 0-1.4 1.42 5 5 0 0 1 0 6.96 1 1 0 0 0 1.4 1.42 7 7 0 0 0 0-9.8m2.9-2.9a1 1 0 0 0-1.4 1.4 9 9 0 0 1 0 12.8 1 1 0 0 0 1.4 1.4 11 11 0 0 0 0-15.6" />
+                    </svg>
+                    <svg class="icon-resume" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8" />
+                    </svg>
+                </button>
+                <p class="mic-label" id="micLabel">Tap to talk</p>
             </div>
         </div>
-
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Conversation Section -->
-            <div class="conversation-section">
-                <!-- Conversation Messages -->
-                <div id="conversationContainer" class="conversation-container">
-                    <div id="conversationMessages" class="conversation-messages">
-                        <div class="empty-state">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48" fill="#999">
-                                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-                            </svg>
-                            <p id="emptyStateMessage">No messages yet. Type or speak to start the conversation!</p>
-                        </div>
-                        <div id="waitingIndicator" class="waiting-indicator" style="display: none;">
-                            Claude is waiting...
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Input Section -->
-            <div class="input-section">
-                <!-- Text Input with Microphone -->
-                <div class="input-container">
-                    <textarea
-                        id="messageInput"
-                        class="message-input"
-                        placeholder="Type a message or use voice..."
-                        rows="1"
-                    ></textarea>
-                    <button id="micBtn" class="mic-button" title="Voice dictation">
-                        <svg class="mic-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M12 1C10.34 1 9 2.34 9 4V12C9 13.66 10.34 15 12 15C13.66 15 15 13.66 15 12V4C15 2.34 13.66 1 12 1ZM19 12C19 15.53 16.39 18.44 13 18.93V22H11V18.93C7.61 18.44 5 15.53 5 12H7C7 14.76 9.24 17 12 17C14.76 17 17 14.76 17 12H19Z" />
-                        </svg>
-                    </button>
-                </div>
-
-            </div>
-        </div>
-
-        </div> <!-- end app-body -->
     </div>
 
-    <script src="app.js"></script>
+    <!-- ══════════════ Scrim shared by both sheets ══════════════ -->
+    <div class="scrim" id="scrim"></div>
+
+    <!-- ══════════════ Sessions sheet ══════════════ -->
+    <aside id="sessionSidebar" class="sheet session-sidebar collapsed" role="dialog" aria-modal="true"
+        aria-label="Sessions">
+        <div class="sheet-grabber" aria-hidden="true"></div>
+        <div class="sheet-header">
+            <h2>Sessions</h2>
+            <button id="sidebarCloseBtn" class="sheet-done" type="button">Done</button>
+        </div>
+        <p class="sheet-note">Your voice goes to the session you pick here. Sub-agents appear under their parent.</p>
+        <div class="sheet-scroll">
+            <div id="sessionList" class="session-list">
+                <div class="session-empty">No sessions connected</div>
+            </div>
+
+            <div class="group">
+                <div class="row background-enforcement-control" id="backgroundEnforcementControl">
+                    <span class="row-label">
+                        Force background agents to send messages
+                        <span class="row-sub">Background agents must speak up instead of staying silent.</span>
+                    </span>
+                    <label class="toggle-switch">
+                        <span class="visually-hidden">Force background agents to send messages</span>
+                        <input type="checkbox" id="backgroundEnforcementToggle">
+                        <span class="toggle-slider" aria-hidden="true"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ══════════════ Settings sheet ══════════════ -->
+    <aside id="settingsContent" class="sheet settings-sheet" role="dialog" aria-modal="true" aria-label="Settings">
+        <div class="sheet-grabber" aria-hidden="true"></div>
+        <div class="sheet-header">
+            <h2>Settings</h2>
+            <button id="settingsCloseBtn" class="sheet-done" type="button">Done</button>
+        </div>
+        <div class="sheet-scroll">
+            <div id="voiceOptions">
+                <p class="group-title">Listening</p>
+                <div class="group">
+                    <div class="row">
+                        <label class="row-label" for="recognitionModeSelect">
+                            Recognition
+                            <span class="row-sub" id="recognitionModeHint">Where your speech is turned into
+                                text.</span>
+                        </label>
+                        <select id="recognitionModeSelect">
+                            <option value="server">On this Mac</option>
+                            <option value="browser">In the browser</option>
+                        </select>
+                    </div>
+                </div>
+
+                <p class="group-title">Speaking</p>
+                <div class="group">
+                    <div class="row row-stack">
+                        <label class="row-label" for="speechRate">Speaking rate</label>
+                        <div class="rate-row">
+                            <input type="range" id="speechRate" min="0.5" max="5" step="0.1" value="1"
+                                aria-describedby="speechRateInput">
+                            <input type="number" id="speechRateInput" min="0.5" max="5" step="0.1" value="1"
+                                aria-label="Speaking rate value">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label class="row-label" for="feedbackSoundMode">
+                            Feedback sounds
+                            <span class="row-sub">Short chimes when Claude starts and stops listening.</span>
+                        </label>
+                        <select id="feedbackSoundMode">
+                            <option value="continuous">Continuous</option>
+                            <option value="once">Once</option>
+                            <option value="off">Off</option>
+                        </select>
+                    </div>
+                    <button class="action-row" id="testTTSBtn" type="button">Test voice</button>
+                </div>
+
+                <p class="group-title">Troubleshooting</p>
+                <div class="group">
+                    <button class="action-row" id="rerunChecksBtn" type="button">Re-check sound and microphone</button>
+                    <button class="action-row" id="showTipsBtn" type="button">Show setup tips again</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <script src="app.js?v=1787286076"></script>
 </body>
+
 </html>
