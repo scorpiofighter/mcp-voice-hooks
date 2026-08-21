@@ -1217,6 +1217,145 @@
             line-height: 1.34;
         }
 
+        /* ── New session ──────────────────────────────────────────── */
+        .spawn-block {
+            margin-bottom: 14px;
+        }
+
+        .spawn-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            min-height: 50px;
+            padding: 12px 14px;
+            border: none;
+            border-radius: var(--radius-card);
+            background: var(--bg-elevated);
+            color: var(--blue);
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .spawn-toggle:active {
+            background: var(--fill);
+        }
+
+        .spawn-toggle svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        .spawn-panel {
+            margin-top: 8px;
+            padding: 12px;
+            border-radius: var(--radius-card);
+            background: var(--bg-elevated);
+        }
+
+        .spawn-panel[hidden] {
+            display: none;
+        }
+
+        .spawn-hint {
+            margin: 0 0 10px;
+            font-size: 13px;
+            color: var(--label-2);
+            line-height: 1.36;
+        }
+
+        .spawn-targets {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            margin-bottom: 12px;
+        }
+
+        .spawn-target {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            min-height: 48px;
+            padding: 10px 12px;
+            border: 1.5px solid var(--separator);
+            border-radius: 10px;
+            background: var(--bg);
+            color: var(--label);
+            font-size: 16px;
+            font-weight: 500;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .spawn-target[aria-pressed="true"] {
+            border-color: var(--blue);
+            background: var(--blue-soft);
+            color: var(--blue);
+            font-weight: 600;
+        }
+
+        .spawn-prompt {
+            width: 100%;
+            min-height: 74px;
+            padding: 10px 12px;
+            border: 1px solid var(--separator);
+            border-radius: 10px;
+            background: var(--bg);
+            color: var(--label);
+            font-family: inherit;
+            font-size: 16px;
+            line-height: 1.35;
+            resize: vertical;
+            margin-bottom: 10px;
+        }
+
+        .spawn-prompt::placeholder {
+            color: var(--label-3);
+        }
+
+        .spawn-start {
+            width: 100%;
+            min-height: 48px;
+            border: none;
+            border-radius: 24px;
+            background: var(--blue);
+            color: #FFFFFF;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .spawn-start:disabled {
+            background: var(--fill-strong);
+            color: var(--label-3);
+            cursor: default;
+        }
+
+        .spawn-start:not(:disabled):active {
+            background: var(--blue-press);
+        }
+
+        .spawn-status {
+            margin: 10px 0 0;
+            font-size: 13px;
+            line-height: 1.36;
+            color: var(--label-2);
+        }
+
+        .spawn-status[data-tone="bad"] {
+            color: var(--red);
+        }
+
+        .spawn-status[data-tone="ok"] {
+            color: var(--green);
+        }
+
         /* Each shell element owns a named row. Without this, hiding any one of
            them shifts the rest up and the dock inherits the 1fr row — which
            silently collapses the microphone to zero height. */
@@ -1887,6 +2026,26 @@
         </div>
         <p class="sheet-note">Your voice goes to the session you pick here. Sub-agents appear under their parent.</p>
         <div class="sheet-scroll">
+            <div class="spawn-block">
+                <button class="spawn-toggle" id="spawnToggle" type="button" aria-expanded="false"
+                    aria-controls="spawnPanel">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
+                    </svg>
+                    <span>New session</span>
+                </button>
+                <div class="spawn-panel" id="spawnPanel" hidden>
+                    <p class="spawn-hint">Opens a Claude Code window on your Mac in the folder you pick. It appears
+                        in the list below a moment later.</p>
+                    <div class="spawn-targets" id="spawnTargets"></div>
+                    <label class="visually-hidden" for="spawnPrompt">First message</label>
+                    <textarea id="spawnPrompt" class="spawn-prompt"
+                        placeholder="What should it start on? (optional)"></textarea>
+                    <button class="spawn-start" id="spawnStart" type="button" disabled>Start session</button>
+                    <p class="spawn-status" id="spawnStatus"></p>
+                </div>
+            </div>
+
             <div id="sessionList" class="session-list">
                 <div class="session-empty">No sessions connected</div>
             </div>
@@ -1965,7 +2124,7 @@
         </div>
     </aside>
 
-    <script src="app.js?v=1787286076"></script>
+    <script src="app.js?v=1787288000"></script>
 </body>
 
 </html>

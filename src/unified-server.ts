@@ -1792,6 +1792,133 @@ app.post('/api/active-session', (req: Request, res: Response) => {
   });
 });
 
+// ── Starting a Claude Code session from the browser ────────────────
+//
+// This is the most dangerous surface in the app: it opens a real terminal on
+// this Mac, and the browser reaching it may be a phone on the other side of a
+// tunnel. So it never accepts a path or a command — only an index into a list
+// the owner wrote on this machine. Anything typed by the phone travels as a
+// file, never as part of a command line.
+
+interface SpawnTarget {
+  name: string;
+  path: string;
+}
+
+const SPAWN_CONFIG_PATH = path.join(os.homedir(), '.config', 'voice-hooks', 'spawn-dirs.json');
+const SPAWN_LAUNCHER = path.join(os.homedir(), '.claude', 'bin', 'voice-spawn');
+
+function loadSpawnTargets(): SpawnTarget[] {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(SPAWN_CONFIG_PATH, 'utf8'));
+    const list = Array.isArray(parsed) ? parsed : parsed?.targets;
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter((t) => t && typeof t.name === 'string' && typeof t.path === 'string')
+      .map((t) => ({
+        name: t.name,
+        path: t.path.startsWith('~') ? path.join(os.homedir(), t.path.slice(1)) : t.path,
+      }))
+      .filter((t) => {
+        try {
+          return fs.statSync(t.path).isDirectory();
+        } catch {
+          return false;
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
+/** Quote a server-owned path for a POSIX shell. */
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+/** Escape a string for embedding in an AppleScript literal. */
+function appleScriptQuote(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+app.get('/api/spawn-targets', (_req: Request, res: Response) => {
+  const targets = loadSpawnTargets();
+  res.json({
+    targets: targets.map((t, index) => ({ index, name: t.name })),
+    configPath: SPAWN_CONFIG_PATH,
+    launcherReady: fs.existsSync(SPAWN_LAUNCHER),
+  });
+});
+
+app.post('/api/spawn-session', (req: Request, res: Response) => {
+  const { targetIndex, prompt } = req.body ?? {};
+
+  const targets = loadSpawnTargets();
+  if (targets.length === 0) {
+    res.status(503).json({
+      error: 'No folders are allowed',
+      message: `Add folders to ${SPAWN_CONFIG_PATH} on this Mac first.`,
+    });
+    return;
+  }
+
+  if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= targets.length) {
+    res.status(400).json({ error: 'Unknown folder' });
+    return;
+  }
+
+  if (!fs.existsSync(SPAWN_LAUNCHER)) {
+    res.status(503).json({
+      error: 'Launcher missing',
+      message: `Expected a launcher script at ${SPAWN_LAUNCHER}.`,
+    });
+    return;
+  }
+
+  const target = targets[targetIndex];
+
+  // The prompt is written to a file so it is passed to claude as a single
+  // argument by the launcher, and never becomes part of a command line here.
+  let promptFile = '';
+  if (typeof prompt === 'string' && prompt.trim()) {
+    promptFile = path.join(os.tmpdir(), `voice-spawn-${randomUUID()}.txt`);
+    try {
+      fs.writeFileSync(promptFile, prompt.trim(), { mode: 0o600 });
+    } catch (error) {
+      debugLog(`[Spawn] Could not stage prompt: ${error}`);
+      promptFile = '';
+    }
+  }
+
+  const parts = [SPAWN_LAUNCHER, target.path];
+  if (promptFile) parts.push(promptFile);
+  const command = parts.map(shellQuote).join(' ');
+
+  const script = [
+    'tell application "iTerm"',
+    '  activate',
+    '  create window with default profile',
+    '  tell current session of current window',
+    `    write text "${appleScriptQuote(command)}"`,
+    '  end tell',
+    'end tell',
+  ].join('\n');
+
+  execFile('osascript', ['-e', script], (error, _stdout, stderr) => {
+    if (error) {
+      debugLog(`[Spawn] Failed to open a session: ${stderr || error.message}`);
+    } else {
+      debugLog(`[Spawn] Opened a session in ${target.path}`);
+    }
+  });
+
+  res.json({
+    success: true,
+    name: target.name,
+    withPrompt: !!promptFile,
+  });
+});
+
 // API for text-to-speech
 app.post('/api/speak', async (req: Request, res: Response) => {
   const { text } = req.body;

@@ -240,6 +240,15 @@ class MessengerClient {
         this.backgroundEnforcementToggle = document.getElementById('backgroundEnforcementToggle');
         this.scrim = document.getElementById('scrim');
 
+        // Starting a session on the Mac from here
+        this.spawnToggle = document.getElementById('spawnToggle');
+        this.spawnPanel = document.getElementById('spawnPanel');
+        this.spawnTargets = document.getElementById('spawnTargets');
+        this.spawnPrompt = document.getElementById('spawnPrompt');
+        this.spawnStart = document.getElementById('spawnStart');
+        this.spawnStatus = document.getElementById('spawnStatus');
+        this.spawnChoice = null;
+
         // Tappable questions
         this.questionCard = document.getElementById('questionCard');
         this.question = null;      // the question document currently on screen
@@ -305,6 +314,7 @@ class MessengerClient {
         this.checkServerRecognition();
         this.loadData();
         this.pollQuestion();
+        this.initializeSpawn();
         this.runEnvironmentChecks();
         this.maybeShowFirstRunTips();
         this.render();
@@ -1090,6 +1100,123 @@ class MessengerClient {
         this.loadData();
         this.renderSessionList();
         this.render();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Starting a session on the Mac
+    //
+    // The folder list comes from the Mac. This page sends back only which
+    // one was picked — never a path, never a command — because whatever can
+    // reach this page can reach that endpoint.
+    // ═══════════════════════════════════════════════════════════════
+
+    initializeSpawn() {
+        if (!this.spawnToggle) return;
+
+        this.spawnToggle.addEventListener('click', () => {
+            const open = this.spawnPanel.hidden;
+            this.spawnPanel.hidden = !open;
+            this.spawnToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) this.loadSpawnTargets();
+        });
+
+        this.spawnStart.addEventListener('click', () => this.startSession());
+        this.spawnPrompt.addEventListener('input', () => this.updateSpawnButton());
+    }
+
+    async loadSpawnTargets() {
+        this.setSpawnStatus('', null);
+        try {
+            const response = await fetch(`${this.baseUrl}/api/spawn-targets`);
+            if (!response.ok) throw new Error('unavailable');
+            const data = await response.json();
+            this.renderSpawnTargets(data);
+        } catch (_e) {
+            this.spawnTargets.textContent = '';
+            this.setSpawnStatus('Could not reach your Mac to ask which folders are allowed.', 'bad');
+        }
+    }
+
+    renderSpawnTargets(data) {
+        const targets = data.targets || [];
+        this.spawnTargets.textContent = '';
+        this.spawnChoice = null;
+
+        if (!data.launcherReady) {
+            this.setSpawnStatus('The launcher script is missing on your Mac, so nothing can be started yet.', 'bad');
+            this.updateSpawnButton();
+            return;
+        }
+        if (targets.length === 0) {
+            this.setSpawnStatus(`No folders are allowed yet. Add some to ${data.configPath || 'the allowlist'} on your Mac.`, 'bad');
+            this.updateSpawnButton();
+            return;
+        }
+
+        for (const target of targets) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'spawn-target';
+            btn.setAttribute('aria-pressed', 'false');
+            btn.textContent = target.name;
+            btn.addEventListener('click', () => {
+                this.spawnChoice = target.index;
+                this.spawnTargets.querySelectorAll('.spawn-target')
+                    .forEach(el => el.setAttribute('aria-pressed', 'false'));
+                btn.setAttribute('aria-pressed', 'true');
+                this.updateSpawnButton();
+            });
+            this.spawnTargets.appendChild(btn);
+        }
+        this.updateSpawnButton();
+    }
+
+    updateSpawnButton() {
+        if (!this.spawnStart) return;
+        this.spawnStart.disabled = this.spawnChoice === null;
+    }
+
+    setSpawnStatus(text, tone) {
+        if (!this.spawnStatus) return;
+        this.spawnStatus.textContent = text;
+        if (tone) {
+            this.spawnStatus.dataset.tone = tone;
+        } else {
+            delete this.spawnStatus.dataset.tone;
+        }
+    }
+
+    async startSession() {
+        if (this.spawnChoice === null) return;
+        this.spawnStart.disabled = true;
+        this.setSpawnStatus('Opening a window on your Mac…', null);
+
+        try {
+            const response = await fetch(`${this.baseUrl}/api/spawn-session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    targetIndex: this.spawnChoice,
+                    prompt: this.spawnPrompt.value.trim(),
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                this.setSpawnStatus(data.message || data.error || 'Could not start it.', 'bad');
+                this.updateSpawnButton();
+                return;
+            }
+            this.setSpawnStatus(
+                `Started in ${data.name}${data.withPrompt ? ' with your message' : ''}. It will appear below shortly.`,
+                'ok');
+            this.spawnPrompt.value = '';
+            // Claude Code registers on its first hook, so give it a moment
+            setTimeout(() => this.loadSessions(), 2500);
+            setTimeout(() => this.loadSessions(), 6000);
+        } catch (_e) {
+            this.setSpawnStatus('Could not reach your Mac.', 'bad');
+        }
+        this.updateSpawnButton();
     }
 
     // ═══════════════════════════════════════════════════════════════
