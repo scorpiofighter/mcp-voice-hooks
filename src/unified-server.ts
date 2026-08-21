@@ -1202,6 +1202,19 @@ app.post('/api/hooks/post-tool', (req: Request, res: Response) => {
 
 // API to clear all utterances
 // Delete specific utterance by ID
+// A window that has only just opened has done nothing yet, so none of the
+// other hooks have fired and the browser has no idea it exists. That is fine
+// at a keyboard — you are looking at it — but it makes a session started from
+// a phone invisible until you happen to give it work. This fires as the
+// session opens, purely to make it appear in the list.
+app.post('/api/hooks/session-start', (req: Request, res: Response) => {
+  logHookRequest(req, 'session-start');
+  const { key } = parseHookRequest(req);
+  autoSelectIfNone(key);
+  debugLog(`[Hook] session-start: key=${key}`);
+  res.json({});
+});
+
 app.delete('/api/utterances/:id', (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
   const session = getActiveSessionOrFirst();
