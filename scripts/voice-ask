@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Put a question in front of the user as tappable buttons in the Voice Mode
+# web app. Reads a JSON questions array on stdin (same shape as
+# AskUserQuestion's `questions`). Their tap comes back as a normal message.
+#
+#   voice-ask <session-id-prefix> < questions.json
+#   voice-ask                     < questions.json   # asks whoever is selected
+set -euo pipefail
+PORT="${MCP_VOICE_HOOKS_PORT:-5111}"
+PREFIX="${1:-}"
+QUESTIONS="$(cat)"
+
+DIRS=(
+  "$HOME/.npm/_npx/23741b3f2354f081/node_modules/mcp-voice-hooks/public"
+  "$HOME/.claude/plugins/marketplaces/mcp-voice-hooks-marketplace/public"
+)
+
+PREFIX="$PREFIX" QUESTIONS="$QUESTIONS" PORT="$PORT" python3 - "${DIRS[@]}" <<'PY'
+import json, os, sys, time, urllib.request
+
+prefix = os.environ["PREFIX"]
+questions = json.loads(os.environ["QUESTIONS"])
+if isinstance(questions, dict):
+    questions = questions.get("questions", [questions])
+
+with urllib.request.urlopen(f"http://127.0.0.1:{os.environ['PORT']}/api/sessions", timeout=5) as r:
+    data = json.load(r)
+
+key = data.get("activeKey")
+if prefix:
+    for s in data.get("sessions", []):
+        if s["sessionId"].startswith(prefix) and not s.get("agentId"):
+            key = s["key"]
+            break
+    else:
+        for s in data.get("sessions", []):
+            if s["sessionId"].startswith(prefix):
+                key = s["key"]
+                break
+
+doc = {
+    "id": f"q-{int(time.time() * 1000)}",
+    "sessionKey": key,
+    "askedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    "expiresAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 3600)),
+    "questions": questions,
+}
+body = json.dumps(doc, indent=2)
+for d in sys.argv[1:]:
+    if os.path.isdir(d):
+        with open(os.path.join(d, "question.json"), "w") as f:
+            f.write(body)
+print(f"asked {doc['id']} -> {key}")
+PY
